@@ -1,0 +1,160 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?POSTGRES_SUPERUSER_PASSWORD is required}
+      POSTGRES_DB: postgres
+      NEWAPI_PG_PASSWORD: ${NEWAPI_PG_PASSWORD:?NEWAPI_PG_PASSWORD is required}
+      SUB2API_PG_PASSWORD: ${SUB2API_PG_PASSWORD:?SUB2API_PG_PASSWORD is required}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../config/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/10-init-multiple-dbs.sh:ro
+    networks:
+      - gateway
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-1gb}
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - redis_data:/data
+    networks:
+      - gateway
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  new-api:
+    build:
+      context: ../new-api
+      # Build metadata only: source still comes from the pinned submodule.
+      dockerfile: ../docker/Dockerfile.new-api
+      args:
+        GOPROXY: ${GO_PROXY:-https://goproxy.cn,direct}
+        GOSUMDB: ${GO_SUMDB:-sum.golang.google.cn}
+    image: ${NEWAPI_IMAGE:-gateway-new-api:local}
+    restart: unless-stopped
+    command: ["--log-dir", "/app/logs"]
+    environment:
+      SQL_DSN: postgresql://newapi:${NEWAPI_PG_PASSWORD:?NEWAPI_PG_PASSWORD is required}@postgres:5432/newapi?sslmode=disable
+      REDIS_CONN_STRING: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      SESSION_SECRET: ${NEWAPI_SESSION_SECRET:?NEWAPI_SESSION_SECRET is required}
+      SESSION_COOKIE_SECURE: ${NEWAPI_SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_TRUSTED_URL: ${NEWAPI_SESSION_COOKIE_TRUSTED_URL:-}
+      TRUSTED_PROXIES: ${NEWAPI_TRUSTED_PROXIES:-none}
+      NODE_NAME: ${NEWAPI_NODE_NAME:-gateway-new-api-1}
+      TZ: ${TZ:-Asia/Shanghai}
+      BATCH_UPDATE_ENABLED: "true"
+      ERROR_LOG_ENABLED: "true"
+    volumes:
+      - newapi_data:/data
+      - newapi_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gateway
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -q '\"success\"' || exit 1"]
+      interval: 20s
+      timeout: 8s
+      retries: 10
+      start_period: 30s
+
+  sub2api:
+    build:
+      context: ../sub2api
+      dockerfile: Dockerfile
+    image: ${SUB2API_IMAGE:-gateway-sub2api:local}
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    environment:
+      AUTO_SETUP: "true"
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "8080"
+      SERVER_MODE: release
+      RUN_MODE: standard
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: sub2api
+      DATABASE_PASSWORD: ${SUB2API_PG_PASSWORD:?SUB2API_PG_PASSWORD is required}
+      DATABASE_DBNAME: sub2api
+      DATABASE_SSLMODE: disable
+      DATABASE_MAX_OPEN_CONNS: ${SUB2API_DB_MAX_OPEN_CONNS:-30}
+      DATABASE_MAX_IDLE_CONNS: ${SUB2API_DB_MAX_IDLE_CONNS:-8}
+      DATABASE_CONN_MAX_LIFETIME_MINUTES: "30"
+      DATABASE_CONN_MAX_IDLE_TIME_MINUTES: "5"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_DB: "1"
+      REDIS_POOL_SIZE: ${SUB2API_REDIS_POOL_SIZE:-128}
+      REDIS_MIN_IDLE_CONNS: ${SUB2API_REDIS_MIN_IDLE_CONNS:-4}
+      ADMIN_EMAIL: ${SUB2API_ADMIN_EMAIL:?SUB2API_ADMIN_EMAIL is required}
+      ADMIN_PASSWORD: ${SUB2API_ADMIN_PASSWORD:?SUB2API_ADMIN_PASSWORD is required}
+      JWT_SECRET: ${SUB2API_JWT_SECRET:?SUB2API_JWT_SECRET is required}
+      TOTP_ENCRYPTION_KEY: ${SUB2API_TOTP_ENCRYPTION_KEY:?SUB2API_TOTP_ENCRYPTION_KEY is required}
+      TZ: ${TZ:-Asia/Shanghai}
+      SECURITY_URL_ALLOWLIST_ENABLED: ${SECURITY_URL_ALLOWLIST_ENABLED:-false}
+      SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP: ${SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:-true}
+      SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS: ${SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:-true}
+      SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS: ${SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS:-}
+      GEMINI_OAUTH_CLIENT_ID: ${GEMINI_OAUTH_CLIENT_ID:-}
+      GEMINI_OAUTH_CLIENT_SECRET: ${GEMINI_OAUTH_CLIENT_SECRET:-}
+      GEMINI_OAUTH_SCOPES: ${GEMINI_OAUTH_SCOPES:-}
+    volumes:
+      - sub2api_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gateway
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 20s
+      timeout: 8s
+      retries: 10
+      start_period: 30s
+
+networks:
+  gateway:
+    driver: bridge
+
+volumes:
+  newapi_data:
+  newapi_logs:
+  sub2api_data:
+  postgres_data:
+  redis_data:

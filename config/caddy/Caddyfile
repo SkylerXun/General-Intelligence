@@ -1,0 +1,24 @@
+{
+	email {$CADDY_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+	reverse_proxy new-api:3000
+}
+
+{$ADMIN_DOMAIN} {
+	@not_allowed not remote_ip {$ADMIN_ALLOWED_CIDRS}
+	respond @not_allowed "Forbidden" 403
+
+	encode zstd gzip
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+	reverse_proxy sub2api:8080
+}

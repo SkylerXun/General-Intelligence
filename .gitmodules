@@ -1,0 +1,6 @@
+[submodule "new-api"]
+	path = new-api
+	url = https://github.com/QuantumNous/new-api.git
+[submodule "sub2api"]
+	path = sub2api
+	url = https://github.com/Wei-Shaw/sub2api.git

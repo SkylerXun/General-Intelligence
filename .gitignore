@@ -1,0 +1,24 @@
+# Runtime secrets and generated local configuration
+env/local.env
+env/production.env
+env/*.env
+!env/*.env.example
+
+# Runtime output
+backups/
+artifacts/
+*.log
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Keep upstream source controlled only through git submodules.
+new-api/data/
+new-api/logs/
+sub2api/data/
+
+# Preserved historical draft; never use it for the new stack.
+docker/compose.legacy-draft.yml
