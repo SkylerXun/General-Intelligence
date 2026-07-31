@@ -26,6 +26,14 @@ wsl -d Ubuntu -- bash /mnt/d/gateway/scripts/local-down.sh
 
 不要把 `local-down.sh -v` 用于需要保留测试数据的环境。
 
+在已验证当前镜像与固定子模块提交一致、且仅需重新构建 Sub2API 时，可使用
+`GATEWAY_SKIP_NEWAPI_BUILD=true` 临时复用现有 New API 镜像；常规验收仍应执行
+完整构建。
+
+迁移后的本地 demo 可复用已有 `postgres:18-alpine`，生产 Compose 仍固定使用
+`postgres:16-alpine`。PostgreSQL 18 使用其新的父级数据目录挂载；上线前必须在
+生产版本完成一次完整验收。
+
 旧 WSL 运行时的只读备份命令见 [operations.md](docs/operations.md)；不要在当前
 WSL 文件系统报 I/O 错误时执行任何 Docker 写入、清理或重启操作。
 

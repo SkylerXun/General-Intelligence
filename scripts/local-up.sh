@@ -14,7 +14,15 @@ fi
 gateway_load_context local
 # Build serially: the local WSL allocation is small and an existing stack may
 # still be running. This does not touch that existing Compose project.
-gateway_compose build new-api
+if [[ "${GATEWAY_SKIP_NEWAPI_BUILD:-false}" == "true" ]]; then
+  docker image inspect "$NEWAPI_IMAGE" >/dev/null 2>&1 || {
+    echo "GATEWAY_SKIP_NEWAPI_BUILD=true requires an existing $NEWAPI_IMAGE image." >&2
+    exit 1
+  }
+  echo "Reusing existing New API image: $NEWAPI_IMAGE"
+else
+  gateway_compose build new-api
+fi
 gateway_compose build sub2api
 gateway_compose up -d --no-build
 

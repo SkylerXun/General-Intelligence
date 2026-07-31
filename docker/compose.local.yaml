@@ -1,4 +1,13 @@
 services:
+  # The migrated WSL already has PostgreSQL 18. Production remains pinned to
+  # postgres:16-alpine in compose.yaml; local uses this compatible image to
+  # allow offline/slow-network acceptance without changing production.
+  postgres:
+    image: ${POSTGRES_LOCAL_IMAGE:-postgres:18-alpine}
+    volumes: !override
+      - postgres_data:/var/lib/postgresql
+      - ../config/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/10-init-multiple-dbs.sh:ro
+
   new-api:
     ports:
       - "127.0.0.1:${NEWAPI_LOCAL_PORT:-3100}:3000"

@@ -37,6 +37,7 @@ services:
       - --requirepass
       - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - redis_data:/data
