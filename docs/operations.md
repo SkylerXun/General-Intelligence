@@ -54,6 +54,14 @@ wsl -d Ubuntu -- bash /mnt/d/gateway/scripts/smoke-test.sh local
 订单、消费和 Redis 状态不迁入新栈。现有账号导出文件属于敏感材料，只能由
 有权限管理员在导入时读取，不能将其复制到 Git 仓库或直接写数据库。
 
+在 WSL 文件系统健康、旧 6 个容器仍可访问时，可执行一次以下命令以只读方式
+导出其 PostgreSQL 逻辑备份和所有命名卷；脚本不会停止旧容器，但输出含有敏感
+数据，必须立即转入加密异地存储。旧 Compose 文件须由管理员从其原位置单独保留。
+
+```bash
+bash scripts/backup-existing-wsl.sh --confirm-existing-runtime-backup
+```
+
 ## 生产部署
 
 1. 在大陆 Linux VPS 安装 Docker Engine 与 Compose 插件，将整个 Git 仓库按

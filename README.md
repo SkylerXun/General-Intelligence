@@ -26,6 +26,9 @@ wsl -d Ubuntu -- bash /mnt/d/gateway/scripts/local-down.sh
 
 不要把 `local-down.sh -v` 用于需要保留测试数据的环境。
 
+旧 WSL 运行时的只读备份命令见 [operations.md](docs/operations.md)；不要在当前
+WSL 文件系统报 I/O 错误时执行任何 Docker 写入、清理或重启操作。
+
 ## 配置与迁移
 
 - `env/local.env` 和 `env/production.env` 含有密码和密钥，已被 Git 忽略。
