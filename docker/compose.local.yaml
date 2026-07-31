@@ -4,6 +4,8 @@ services:
   # allow offline/slow-network acceptance without changing production.
   postgres:
     image: ${POSTGRES_LOCAL_IMAGE:-postgres:18-alpine}
+    ports:
+      - "127.0.0.1:${POSTGRES_LOCAL_PORT:-54329}:5432"
     volumes: !override
       - postgres_data:/var/lib/postgresql
       - ../config/postgres/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/10-init-multiple-dbs.sh:ro
