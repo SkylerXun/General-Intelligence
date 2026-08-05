@@ -1,5 +1,25 @@
 # Gateway
 
+## Multi-device checkout
+
+This repository keeps `new-api` and `sub2api` as pinned Git submodules. The root
+repository stores their commit pointers; their source files are fetched from the
+URLs in `.gitmodules` during recursive checkout.
+
+Clone with submodules enabled:
+
+```powershell
+git clone --recurse-submodules https://github.com/SkylerXun/General-Intelligence.git gateway
+```
+
+If the root repository was already cloned and those directories are empty:
+
+```powershell
+git -C gateway submodule update --init --recursive
+```
+
+Do not commit runtime secrets. `env/*.env` is intentionally ignored.
+
 New API 是客户门户、客户 API、余额账本和消费日志；Sub2API 是仅供内部调用的
 账号池。两个上游以固定提交的 Git submodule 纳入本仓库，业务定制优先使用后台
 配置，补丁记录在 `patches/`，不直接把旧工作目录的未提交改动带进来。
