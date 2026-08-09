@@ -7,7 +7,7 @@
 - 本地 Compose 项目名固定为 `gateway-local`，端口只绑定 `127.0.0.1:3100`
   和 `127.0.0.1:8180`。生产项目名为 `gateway`，只由 Caddy 发布 `80/443`。
 - PostgreSQL、Redis、New API、Sub2API 不发布原始主机端口。生产防火墙仅允许
-  对外 `80/443`；SSH 或供应商控制台管理须使用独立的受限管理策略。
+  对外 `80/443`；SSH 和 Sub2API 管理应使用 Tailscale 等私有管理网络。
 - Redis 的 `1gb` 是最大内存上限而不是预分配。约 100 个用户的初期单机可用一
   个 Redis 实例；观察 `used_memory`、`evicted_keys`、延迟和连接数后再扩容。
   `noeviction` 下 `evicted_keys` 必须始终为 0，内存不足会显式拒绝写入而不是
@@ -68,9 +68,9 @@ bash scripts/backup-existing-wsl.sh --confirm-existing-runtime-backup
    固定提交检出，初始化子模块。
 2. 从 `env/production.env.example` 创建未跟踪的 `env/production.env`，用安全
    随机值替换全部占位符，并设置为 `chmod 600`。
-3. 填写实际 `APP_DOMAIN`、`ADMIN_DOMAIN`、Caddy 邮箱、管理员固定出口 IP/CIDR
-   和独占 Docker 子网。`ADMIN_DOMAIN` 必须与主域名不同，建议 DNS-only，不能
-   通过 CDN 代理后再按原始客户 IP 放行。
+3. 填写实际 `APP_DOMAIN`、Caddy 邮箱和独占 Docker 子网。仅为 `APP_DOMAIN`
+   创建公网 DNS 记录；Sub2API 仅监听 `127.0.0.1:8180`，不创建管理域名或公网
+   防火墙规则。
 4. 将 `NEWAPI_TRUSTED_PROXIES` 设为 `CADDY_INTERNAL_IP`。这使 New API 只信任
    自己的 Caddy 容器传来的转发头，而不是所有私有网段。
 5. 完成域名解析、ICP备案及适用的隐私/数据/支付合规要求后执行：
@@ -82,9 +82,11 @@ docker compose --project-name gateway --env-file env/production.env \
 bash scripts/smoke-test.sh prod
 ```
 
-6. 验收 HTTPS、主门户、受限管理域、注册、邮箱、Turnstile、人工充值、余额不足
-   拒绝、至少一个 Sub2API 模型和一个官方 API Key 模型。正式上线初期仅开放已验
-   证模型和低额度用户。
+6. 在 VPS 与管理员设备登录同一 Tailscale 网络，执行 `tailscale serve --https=443
+   http://127.0.0.1:8180`，仅通过其私有 HTTPS 地址验收 Sub2API 管理端。再验收
+   公网 HTTPS、New API 门户、注册、邮箱、Turnstile、人工充值、余额不足拒绝、
+   至少一个 Sub2API 模型和一个官方 API Key 模型。正式上线初期仅开放已验证模型
+   和低额度用户。
 
 ## 备份、恢复与更新
 
