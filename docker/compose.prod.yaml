@@ -17,12 +17,14 @@ services:
       - caddy_config:/config
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
-      ADMIN_DOMAIN: ${ADMIN_DOMAIN:?ADMIN_DOMAIN is required}
-      ADMIN_ALLOWED_CIDRS: ${ADMIN_ALLOWED_CIDRS:?ADMIN_ALLOWED_CIDRS is required}
       CADDY_EMAIL: ${CADDY_EMAIL:?CADDY_EMAIL is required}
     networks:
       gateway:
         ipv4_address: ${CADDY_INTERNAL_IP:?CADDY_INTERNAL_IP is required}
+
+  sub2api:
+    ports:
+      - "127.0.0.1:8180:8080"
 
 networks:
   gateway:
