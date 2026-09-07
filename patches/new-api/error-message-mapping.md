@@ -14,3 +14,8 @@
 This customization deliberately preserves the original upstream error for retry,
 channel-disable, violation, and administrator diagnostics. Mapping is applied only
 at public response and non-admin log presentation boundaries.
+
+The mapping also accepts the special `stream_disconnected` key. It is used for
+New API channels when an upstream SSE failure is wrapped as
+`stream disconnected before completion`; this lets the public response use a
+configured explanation without exposing the upstream message text.

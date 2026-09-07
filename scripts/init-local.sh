@@ -23,15 +23,11 @@ install -m 600 "$TEMPLATE" "$TARGET"
 for key in \
   POSTGRES_SUPERUSER_PASSWORD \
   NEWAPI_PG_PASSWORD \
-  SUB2API_PG_PASSWORD \
   REDIS_PASSWORD \
-  NEWAPI_SESSION_SECRET \
-  SUB2API_ADMIN_PASSWORD \
-  SUB2API_JWT_SECRET \
-  SUB2API_TOTP_ENCRYPTION_KEY; do
+  NEWAPI_SESSION_SECRET; do
   value="$(generate_secret)"
   sed -i "s|^${key}=__GENERATE__$|${key}=${value}|" "$TARGET"
 done
 
 echo "Created $TARGET with generated local secrets."
-echo "The Sub2API administrator password is stored only in that file."
+echo "The New API local secrets are stored only in that file."

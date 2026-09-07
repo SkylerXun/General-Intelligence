@@ -5,8 +5,6 @@ services:
     depends_on:
       new-api:
         condition: service_healthy
-      sub2api:
-        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
@@ -21,10 +19,6 @@ services:
     networks:
       gateway:
         ipv4_address: ${CADDY_INTERNAL_IP:?CADDY_INTERNAL_IP is required}
-
-  sub2api:
-    ports:
-      - "127.0.0.1:8180:8080"
 
 networks:
   gateway:

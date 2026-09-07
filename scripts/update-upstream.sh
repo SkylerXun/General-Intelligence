@@ -6,8 +6,8 @@ ROOT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 submodule="${1:-}"
 revision="${2:-}"
 
-if [[ "$submodule" != "new-api" && "$submodule" != "sub2api" ]] || [[ -z "$revision" ]]; then
-  echo "Usage: $0 <new-api|sub2api> <explicit-commit-or-tag>" >&2
+if [[ "$submodule" != "new-api" ]] || [[ -z "$revision" ]]; then
+  echo "Usage: $0 new-api <explicit-commit-or-tag>" >&2
   exit 2
 fi
 

@@ -23,9 +23,7 @@ if [[ "${GATEWAY_SKIP_NEWAPI_BUILD:-false}" == "true" ]]; then
 else
   gateway_compose build new-api
 fi
-gateway_compose build sub2api
 gateway_compose up -d --no-build
 
 echo "New API:  http://localhost:${NEWAPI_LOCAL_PORT}"
-echo "Sub2API:  http://localhost:${SUB2API_LOCAL_PORT}"
-echo "Run scripts/smoke-test.sh local after both services are healthy."
+echo "Run scripts/smoke-test.sh local after the service is healthy."

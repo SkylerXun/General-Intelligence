@@ -14,7 +14,7 @@ backup_dir="$GATEWAY_ROOT/backups/${environment}-${timestamp}"
 mkdir -p "$backup_dir"
 chmod 700 "$backup_dir"
 
-if [[ -z "$(gateway_compose ps -q postgres)" || -z "$(gateway_compose ps -q redis)" ]]; then
+if [[ -z "$(gateway_compose ps -q postgres)" || -z "$(gateway_compose ps -q redis)" || -z "$(gateway_compose ps -q new-api)" ]]; then
   echo "The $environment stack is not running; cannot create a consistent backup." >&2
   exit 1
 fi
@@ -22,9 +22,6 @@ fi
 gateway_compose exec -T postgres sh -c \
   'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc -d newapi' \
   > "$backup_dir/newapi.dump"
-gateway_compose exec -T postgres sh -c \
-  'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U postgres -Fc -d sub2api' \
-  > "$backup_dir/sub2api.dump"
 
 redis_container="$(gateway_compose ps -q redis)"
 temporary_rdb="/tmp/gateway-${timestamp}.rdb"
@@ -36,8 +33,19 @@ trap cleanup_redis_snapshot EXIT
 docker exec "$redis_container" redis-cli --no-auth-warning -a "$REDIS_PASSWORD" --rdb "$temporary_rdb" >/dev/null
 docker cp "$redis_container:$temporary_rdb" "$backup_dir/redis.rdb"
 
+# New API keeps uploaded guide media in its data volume; include it alongside
+# the database and Redis snapshot so the migration preserves user content.
+newapi_container="$(gateway_compose ps -q new-api)"
+newapi_volume="$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$newapi_container")"
+[[ -n "$newapi_volume" ]] || { echo "Could not locate the New API data volume." >&2; exit 1; }
+docker run --rm \
+  -v "$newapi_volume:/source:ro" \
+  -v "$backup_dir:/backup" \
+  alpine:3.21 \
+  tar -C /source -czf /backup/newapi_data.tar.gz .
+
 printf 'BACKUP_FORMAT=1\nENVIRONMENT=%s\nCREATED_AT_UTC=%s\n' "$environment" "$timestamp" > "$backup_dir/metadata.env"
-(cd "$backup_dir" && sha256sum newapi.dump sub2api.dump redis.rdb > SHA256SUMS)
+(cd "$backup_dir" && sha256sum newapi.dump redis.rdb newapi_data.tar.gz > SHA256SUMS)
 
 echo "Backup completed: $backup_dir"
 echo "Store this directory in encrypted off-host storage. It contains service state."
