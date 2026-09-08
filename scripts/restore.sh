@@ -44,7 +44,7 @@ done
 gateway_compose exec -T postgres sh -c \
   'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c "DROP DATABASE IF EXISTS newapi WITH (FORCE);" -c "CREATE DATABASE newapi OWNER newapi;"'
 gateway_compose exec -T postgres sh -c \
-  'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore --no-owner --no-privileges -U postgres -d newapi' \
+  'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore --role=newapi --no-owner --no-privileges -U postgres -d newapi' \
   < "$backup_dir/newapi.dump"
 
 # Restore uploaded guide media into the New API data volume.
